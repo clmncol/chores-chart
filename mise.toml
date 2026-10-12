@@ -1,0 +1,14 @@
+[tools]
+go = "1.26.4"
+
+[tasks.generate]
+description = "Render this week's chart"
+run = "go run . render"
+
+[tasks.build]
+description = "Build the CLI"
+run = "go build -o bin/chores ."
+
+[tasks.clean]
+description = "Remove generated output"
+run = "rm -rf out bin chores.pdf"

@@ -1,0 +1,41 @@
+# chore-chart — one chore per line:  <task> | <when>
+#
+# No "|" means every day. Comma-separate when a chore lands on more than one
+# date. Blank lines and lines starting with "#" are ignored.
+#
+#   daily            every day
+#   sat              weekly on that weekday (mon, tues, weds, ...)
+#   1st  /  15th     day of the month
+#   apr 5            that date each year (two = twice a year)
+#   2026-11-23       a one-off on that date
+#   1st every 3 months   day of the month, quarterly
+
+Make bed
+Dishes / load dishwasher
+Wipe kitchen counters
+Quick tidy (10 min)
+
+Take out trash / recycling | mon
+Laundry | wed
+Vacuum | sat
+Mop floors | sat
+Dust surfaces | sat
+Groceries | sat
+Clean bathrooms | sun
+Change bed sheets | sun
+Clean out fridge | sun
+
+Pay bills | 1st
+Wipe baseboards | 15th
+Clean windows / mirrors | 1st every 3 months
+Deep clean oven & microwave | 1st every 3 months
+Wash throw blankets & pillows | 1st every 3 months
+
+Clean gutters | apr 5, oct 5
+Flip / rotate mattresses | apr 5, oct 5
+Swap closet (winter/summer) | apr 1, nov 1
+Flush water heater | mar 15
+
+Replace kitchen faucet cartridge | 2026-11-23
+Sew on beanie | 2026-12-05
+Return library books | 2026-12-20
