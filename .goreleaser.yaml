@@ -1,0 +1,38 @@
+version: 2
+
+project_name: chores
+
+builds:
+  - id: chores
+    main: .
+    binary: chores
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x64
+      {{- else }}{{ .Arch }}{{ end }}
+
+checksum: {}
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^ignore"
+      - "^init"
