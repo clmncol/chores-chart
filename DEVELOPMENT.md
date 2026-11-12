@@ -4,7 +4,7 @@
 
 ```
 main.go              thin entry point
-cmd/                 cobra CLI (render)
+cmd/                 cobra CLI (render) and the JSON encoder
 internal/chore/      list parser + weekly resolution
 internal/chart/      PDF rendering (maroto) — no file I/O
 ```
@@ -13,7 +13,12 @@ internal/chart/      PDF rendering (maroto) — no file I/O
 Monday first — and knows nothing about PDFs. `internal/chart` turns a `Week`
 into PDF bytes and knows nothing about files or the list format. That split is
 the seam to build on: a new output format belongs behind `cmd/` and should reuse
-`chore.Week` rather than re-parsing the list.
+`chore.Week` rather than re-parsing the list, which is how `--format json` is
+built.
+
+`Week.Timeless` carries one fact from the parser to the renderers: whether the
+list pins any chore to a date. The PDF drops its week and day dates when it is
+true; the JSON keeps dates regardless, since a script wants a concrete week.
 
 ## Tasks
 
@@ -30,13 +35,9 @@ Ideas worth considering if I'm bored.
 
 ### Intermediate format (`--format json|md`)
 
-The resolved week (`chore.Week`) is already the intermediate representation
-
-```sh
-chores render --format json   # resolved week as JSON
-chores render --format md     # same data as a markdown checklist
-chores render --format pdf    # current output (default)
-```
+The resolved week (`chore.Week`) is already the intermediate representation, and
+`--format json` now ships on top of it. `--format md` would be the same shape and
+is the natural next format if a markdown checklist is ever wanted.
 
 What is _not_ worth it yet: splitting the renderer into a separate program that consumes that
 format. That adds a schema to maintain, serialization code, and a second binary that drifts out of

@@ -43,12 +43,37 @@ chores render -i list.txt    # another list
 chores render -d 2026-11-01  # preview any week
 chores render -o week.pdf    # another output path
 chores render -o out         # a directory gets chores.pdf
+chores render -f json        # resolved week as JSON on stdout
 ```
 
 Flags: `-i/--input` (default `chores.txt`), `-o/--output` (default `.`, the
-current directory), `-d/--date` (reference date `YYYY-MM-DD`, default today).
-Passing a directory — existing, or with a trailing slash — writes
-`chores.pdf` inside it.
+current directory), `-d/--date` (reference date `YYYY-MM-DD`, default today),
+`-f/--format` (`pdf` default, or `json`). Passing a directory — existing, or
+with a trailing slash — writes `chores.pdf` (or `chores.json`) inside it.
+
+## Weeks that never change
+
+A list of daily and weekday chores resolves to the same chart every week, so the
+renderer leaves the week and the dates off it: the page is meant to be printed
+once and reused. As soon as the list contains one dated chore — a day of the
+month, a yearly date, a one-off — the chart names its week and dates each day,
+because the chart is then specific to that week.
+
+## JSON output
+
+`--format json` prints the resolved week and always includes dates, so a script
+reads a concrete week even when the list itself is timeless. `-o` writes to a
+file instead of stdout.
+
+```json
+{
+  "start": "2026-11-09",
+  "timeless": false,
+  "days": [
+    { "date": "2026-11-09", "name": "Monday", "tasks": ["Make bed"] }
+  ]
+}
+```
 
 ## Development
 

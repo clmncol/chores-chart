@@ -13,16 +13,29 @@ import (
 	"chores/internal/chore"
 )
 
+// Output formats; the resolved week is the same for all of them.
+const (
+	formatPDF  = "pdf"
+	formatJSON = "json"
+)
+
+// Default file names, written when the output path names a directory.
+const (
+	pdfName  = "chores.pdf"
+	jsonName = "chores.json"
+)
+
 func renderCmd() *cobra.Command {
 	var (
 		input  string
 		output string
 		date   string
+		format string
 	)
 
 	c := &cobra.Command{
 		Use:   "render",
-		Short: "Render the chore chart PDF",
+		Short: "Render the chore chart",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			plan, err := chore.Load(input)
@@ -37,36 +50,63 @@ func renderCmd() *cobra.Command {
 				return err
 			}
 
-			f, path, err := create(output)
-			if err != nil {
-				return err
-			}
-			// Close as a best effort if we return early; the happy path below
-			// closes explicitly so its error is reported.
-			defer func() { _ = f.Close() }()
-
 			week := plan.Week(ref)
-			if err := chart.Render(week, f); err != nil {
-				return err
+			switch format {
+			case formatPDF:
+				return renderPDF(cmd, week, output)
+			case formatJSON:
+				return renderJSON(cmd, week, output)
+			default:
+				return fmt.Errorf("invalid --format %q (want %s or %s)", format, formatPDF, formatJSON)
 			}
-			if err := f.Close(); err != nil {
-				return err
-			}
-
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Wrote %s for %s – %s\n", path,
-				week.Start.Format("Mon Jan 2"), week.Start.AddDate(0, 0, 6).Format("Mon Jan 2"))
-			return err
 		},
 	}
 
 	c.Flags().StringVarP(&input, "input", "i", "chores.txt", "chore list to render")
-	c.Flags().StringVarP(&output, "output", "o", ".", "PDF output path; a directory writes "+defaultName+" inside it")
+	c.Flags().StringVarP(&output, "output", "o", ".", "output path; a directory writes "+pdfName+" or "+jsonName+" inside it")
 	c.Flags().StringVarP(&date, "date", "d", "", "reference date YYYY-MM-DD (default today)")
+	c.Flags().StringVarP(&format, "format", "f", formatPDF, "output format: "+formatPDF+" or "+formatJSON)
 	return c
 }
 
-// defaultName is written when the output path names a directory.
-const defaultName = "chores.pdf"
+func renderPDF(cmd *cobra.Command, week chore.Week, output string) error {
+	f, path, err := create(output, pdfName)
+	if err != nil {
+		return err
+	}
+	// Close as a best effort if we return early; the happy path below closes
+	// explicitly so its error is reported.
+	defer func() { _ = f.Close() }()
+
+	if err := chart.Render(week, f); err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(cmd.OutOrStdout(), "Wrote %s for %s – %s\n", path,
+		week.Start.Format("Mon Jan 2"), week.Start.AddDate(0, 0, 6).Format("Mon Jan 2"))
+	return err
+}
+
+// renderJSON writes to stdout, the expected target for a programmatic consumer,
+// unless the caller asked for a file with -o.
+func renderJSON(cmd *cobra.Command, week chore.Week, output string) error {
+	if !cmd.Flags().Changed("output") {
+		return writeJSON(cmd.OutOrStdout(), week)
+	}
+
+	f, _, err := create(output, jsonName)
+	if err != nil {
+		return err
+	}
+	if err := writeJSON(f, week); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
+}
 
 func referenceDate(s string) (time.Time, error) {
 	if s == "" {
@@ -81,10 +121,10 @@ func referenceDate(s string) (time.Time, error) {
 
 // create opens the output file, creating parent directories, and returns the
 // path actually written. A directory (existing, or written with a trailing
-// separator) gets the default file name appended.
-func create(path string) (*os.File, string, error) {
+// separator) gets name appended.
+func create(path, name string) (*os.File, string, error) {
 	if isDir(path) || strings.HasSuffix(path, string(os.PathSeparator)) {
-		path = filepath.Join(path, defaultName)
+		path = filepath.Join(path, name)
 	}
 	if dir := filepath.Dir(path); dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {

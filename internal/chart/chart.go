@@ -80,12 +80,16 @@ func build(w chore.Week) core.Maroto {
 		Color: ink,
 		Top:   0.5,
 	}))
-	m.AddRow(6, text.NewCol(grid, weekRange(w.Start), props.Text{
-		Size:  10,
-		Align: align.Center,
-		Color: muted,
-		Top:   0.5,
-	}))
+	// A timeless list renders the same chart every week, so naming the week
+	// would only date a page that is meant to be reused.
+	if !w.Timeless {
+		m.AddRow(6, text.NewCol(grid, weekRange(w.Start), props.Text{
+			Size:  10,
+			Align: align.Center,
+			Color: muted,
+			Top:   0.5,
+		}))
+	}
 	m.AddRows(spacer(3))
 	m.AddRows(hairline())
 	m.AddRows(spacer(6))
@@ -97,7 +101,7 @@ func build(w chore.Week) core.Maroto {
 	right := []int{4, 5, 6}
 	for slot := range left {
 		l, r := dayAt(w, left, slot), dayAt(w, right, slot)
-		m.AddRows(headingRow(l, r))
+		m.AddRows(headingRow(l, r, w.Timeless))
 		for i := 0; i < max(len(l.tasks), len(r.tasks)); i++ {
 			m.AddRows(taskRow(l, r, i))
 		}
@@ -123,24 +127,36 @@ func dayAt(w chore.Week, days []int, slot int) dayCol {
 	return dayCol{date: w.Start.AddDate(0, 0, i), tasks: w.Days[i], has: true}
 }
 
-func headingRow(l, r dayCol) core.Row {
-	cols := headingCols(l)
+func headingRow(l, r dayCol, timeless bool) core.Row {
+	cols := headingCols(l, timeless)
 	cols = append(cols, gutterCol())
-	cols = append(cols, headingCols(r)...)
+	cols = append(cols, headingCols(r, timeless)...)
 	return row.New(headH).Add(cols...)
 }
 
 // headingCols draws a day's heading as a tinted band: the weekday on the left
-// and its date on the right.
-func headingCols(day dayCol) []core.Col {
-	var name, date string
+// and, for a week-specific chart, its date on the right. A timeless chart drops
+// the date and lets the weekday span the column.
+func headingCols(day dayCol, timeless bool) []core.Col {
+	var name string
 	bg, fg := (*props.Color)(nil), ink
 	if day.has {
 		name = strings.ToUpper(day.date.Format("Monday"))
-		date = day.date.Format("Jan 2")
 		bg, fg = headBg, headFg
 	}
 
+	if timeless {
+		return []core.Col{
+			text.NewCol(half, name, props.Text{
+				Size: 9, Style: fontstyle.Bold, Color: fg, Top: 2.1, Left: 2,
+			}).WithStyle(&props.Cell{BackgroundColor: bg}),
+		}
+	}
+
+	var date string
+	if day.has {
+		date = day.date.Format("Jan 2")
+	}
 	return []core.Col{
 		text.NewCol(nameW, name, props.Text{
 			Size: 9, Style: fontstyle.Bold, Color: fg, Top: 2.1, Left: 2,

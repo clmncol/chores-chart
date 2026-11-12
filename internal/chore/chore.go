@@ -25,6 +25,9 @@ import (
 type Week struct {
 	Start time.Time
 	Days  [7][]string
+	// Timeless is true when the plan has no chore pinned to a date, so every
+	// week resolves the same and the chart need not name its week.
+	Timeless bool
 }
 
 // Plan is a parsed chore list, in file order.
@@ -92,7 +95,7 @@ func Parse(r io.Reader) (Plan, error) {
 // Week resolves the plan into the week containing ref, Monday first.
 func (p Plan) Week(ref time.Time) Week {
 	start := mondayOf(ref)
-	w := Week{Start: start}
+	w := Week{Start: start, Timeless: p.timeless()}
 	for i := range w.Days {
 		date := start.AddDate(0, 0, i)
 		for _, c := range p.chores {
@@ -114,6 +117,19 @@ func (c chore) due(date time.Time) bool {
 		}
 	}
 	return false
+}
+
+// timeless reports whether every week resolves identically, which holds when no
+// chore is pinned to a date: only daily and weekday chores are present.
+func (p Plan) timeless() bool {
+	for _, c := range p.chores {
+		for _, t := range c.tokens {
+			if t.kind != kindDaily && t.kind != kindWeekly {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // Lint reports chores that can never fall on some of the dates they name, such
@@ -334,6 +350,12 @@ var weekdays = []time.Weekday{
 
 func weekdaysFor(key string) []time.Weekday {
 	k := strings.ToLower(strings.TrimSpace(key))
+	if k == "" {
+		return nil
+	}
+	// Weekdays are often written in the plural: "tues" and "weds" are
+	// prefixes of no weekday name, but their singular forms are.
+	k = strings.TrimSuffix(k, "s")
 	if k == "" {
 		return nil
 	}

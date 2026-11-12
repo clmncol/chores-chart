@@ -103,3 +103,38 @@ func TestParseErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestTimeless(t *testing.T) {
+	cases := []struct {
+		src  string
+		want bool
+	}{
+		{"Make bed\nVacuum | sat\nLaundry | weds\n", true},    // daily + weekday only
+		{"Make bed | daily\n", true},                          // explicit daily
+		{"", true},                                            // nothing to schedule
+		{"Pay bills | 1st\n", false},                          // day of the month
+		{"Clean gutters | apr 5\n", false},                    // yearly
+		{"Replace faucet | 2026-11-23\n", false},              // one-off
+		{"Make bed\nPay bills | 1st every 3 months\n", false}, // one dated chore is enough
+	}
+	for _, tc := range cases {
+		if got := load(t, tc.src).Week(time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC)).Timeless; got != tc.want {
+			t.Errorf("Timeless(%q) = %v, want %v", tc.src, got, tc.want)
+		}
+	}
+}
+
+func TestWeekdayPlurals(t *testing.T) {
+	// The README writes "tues" and "weds", which are not prefixes of any
+	// weekday name; the trailing "s" is dropped before matching.
+	p := load(t, "Trash | tues\nLaundry | weds\nBins | thurs\n")
+	for date, want := range map[string]string{
+		"2026-11-10": "Trash",
+		"2026-11-11": "Laundry",
+		"2026-11-12": "Bins",
+	} {
+		if got := tasksOn(p, date); !slices.Equal(got, []string{want}) {
+			t.Errorf("%s: got %q, want %q", date, got, []string{want})
+		}
+	}
+}
