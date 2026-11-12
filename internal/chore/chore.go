@@ -34,6 +34,7 @@ type Plan struct {
 
 type chore struct {
 	task   string
+	raw    string  // the line as written, for diagnostics
 	tokens []token // empty means every day
 }
 
@@ -70,7 +71,7 @@ func Parse(r io.Reader) (Plan, error) {
 			return Plan{}, fmt.Errorf("line %d: missing task before \"|\"", line)
 		}
 
-		c := chore{task: task}
+		c := chore{task: task, raw: s}
 		if when != "" {
 			for _, part := range strings.Split(when, ",") {
 				tok, err := parseToken(part)
@@ -113,6 +114,52 @@ func (c chore) due(date time.Time) bool {
 		}
 	}
 	return false
+}
+
+// Lint reports chores that can never fall on some of the dates they name, such
+// as a chore on the 31st in months with 30 days. The list still renders in the
+// months where the date does occur; warnings are advisory.
+func (p Plan) Lint() []string {
+	var out []string
+	for _, c := range p.chores {
+		var missing []time.Month
+		for _, t := range c.tokens {
+			missing = append(missing, t.absentMonths()...)
+		}
+		if len(missing) > 0 {
+			out = append(out, fmt.Sprintf("%s: never occurs in %s", c.raw, joinMonths(missing)))
+		}
+	}
+	return out
+}
+
+// absentMonths lists the months a monthly or yearly date cannot occur in, e.g.
+// the 31st is absent from February, April, June, September and November.
+func (t token) absentMonths() []time.Month {
+	var out []time.Month
+	switch t.kind {
+	case kindMonthly:
+		for m := time.January; m <= time.December; m++ {
+			if t.every >= 2 && (int(m)-1)%t.every != 0 {
+				continue // not a month this chore is scheduled in
+			}
+			if !existsIn(t.day, m) {
+				out = append(out, m)
+			}
+		}
+	case kindYearly:
+		if !existsIn(t.day, t.month) {
+			out = append(out, t.month)
+		}
+	}
+	return out
+}
+
+// existsIn reports whether day ever occurs in month m. A leap year is used so
+// feb 29 counts as real while apr 31 does not: time.Date rolls the overflow into
+// the next month, which is how the check reads without a month-length table.
+func existsIn(day int, m time.Month) bool {
+	return time.Date(2000, m, day, 0, 0, 0, 0, time.UTC).Month() == m
 }
 
 // ─── dates ──────────────────────────────────────────────────────────────────

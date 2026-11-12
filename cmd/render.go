@@ -29,6 +29,9 @@ func renderCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			for _, w := range plan.Lint() {
+				fmt.Fprintln(cmd.ErrOrStderr(), "warning:", w)
+			}
 			ref, err := referenceDate(date)
 			if err != nil {
 				return err

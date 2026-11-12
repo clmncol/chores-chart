@@ -66,6 +66,27 @@ func TestOrderAndComments(t *testing.T) {
 	}
 }
 
+func TestLint(t *testing.T) {
+	cases := []struct {
+		src  string
+		want []string
+	}{
+		{"", nil},
+		{"Make bed\nVacuum | sat\nPay bills | 1st\n", nil},
+		{"Water lawn | 31st\n", []string{"Water lawn | 31st: never occurs in February, April, June, September, November"}},
+		{"Clean litter box | 30th\n", []string{"Clean litter box | 30th: never occurs in February"}},
+		{"Reports | 31st every 3 months\n", []string{"Reports | 31st every 3 months: never occurs in April"}},
+		{"Leap day | feb 29\n", nil}, // real in leap years
+		{"Never | apr 31\n", []string{"Never | apr 31: never occurs in April"}},
+		{"After | 2026-11-23\n", nil},
+	}
+	for _, tc := range cases {
+		if got := load(t, tc.src).Lint(); !slices.Equal(got, tc.want) {
+			t.Errorf("Lint(%q):\n got %q\nwant %q", tc.src, got, tc.want)
+		}
+	}
+}
+
 func TestParseErrors(t *testing.T) {
 	for _, src := range []string{
 		"Vacuum | someday",
