@@ -31,7 +31,7 @@ go test ./...        # parser + schedule tests
 
 ## Possible improvements
 
-Ideas worth considering if I'm bored.
+Backlog ideas.
 
 ### Intermediate format (`--format json|md`)
 
